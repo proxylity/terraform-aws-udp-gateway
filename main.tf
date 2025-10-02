@@ -38,17 +38,31 @@ resource "aws_cloudformation_stack" "proxylity_listener" {
           }
           ListenerName = var.listener_name
           Protocols = var.protocols
-          ClientRestrictions = var.client_restrictions
+          ClientRestrictions = {
+            Networks = var.client_restrictions.networks
+            Domains  = var.client_restrictions.domains
+          }
           Destinations = [
-            for dest in var.destinations : {
-              Name            = dest.name
-              Description     = dest.description
-              DestinationArn  = dest.destination_arn
-              Role            = dest.role
-              Batching        = dest.batching
-              MetricsEnabled  = dest.metrics_enabled
-              Formatter       = dest.formatter
-            }
+            for dest in var.destinations : merge(
+              {
+                Name            = dest.name
+                Description     = dest.description
+                DestinationArn  = dest.destination_arn
+                Role            = dest.role != null ? {
+                  Arn = dest.role.role_arn
+                } : null
+                MetricsEnabled  = dest.metrics_enabled
+                Formatter       = dest.formatter
+              },
+              dest.batching != null ? {
+                Batching = merge(
+                  {},
+                  dest.batching.count != null ? { Count = dest.batching.count } : {},
+                  dest.batching.timeout_in_seconds != null ? { TimeoutInSeconds = dest.batching.timeout_in_seconds } : {},
+                  dest.batching.size_in_mb != null ? { SizeInMb = dest.batching.size_in_mb } : {}
+                )
+              } : {}
+            )
           ]
         }
       }
@@ -56,7 +70,7 @@ resource "aws_cloudformation_stack" "proxylity_listener" {
     
     Outputs = {
       ListenerName = {
-        Value = { Ref = "ProxylityListener" }
+        Value = { "Fn::GetAtt" = ["ProxylityListener", "Id"] }
       }
       Port = {
         Value = { "Fn::GetAtt" = ["ProxylityListener", "Port"] }
@@ -65,11 +79,12 @@ resource "aws_cloudformation_stack" "proxylity_listener" {
         Value = { "Fn::GetAtt" = ["ProxylityListener", "Domain"] }
       }
       DestinationNames = {
-        Value = { "Fn::GetAtt" = ["ProxylityListener", "DestinationNames"] }
+        Value = { "Fn::Join": [ ",", { "Fn::GetAtt" = ["ProxylityListener", "DestinationNames"] } ] }
       }
     }
   })
 
-  tags = var.tags
+  capabilities = ["CAPABILITY_AUTO_EXPAND"]
+  tags         = var.tags
 }
 

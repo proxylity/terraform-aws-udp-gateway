@@ -47,5 +47,6 @@ resource "aws_cloudformation_stack" "proxylity_destination_arn" {
     }
   })
 
-  tags = var.tags
+  capabilities = ["CAPABILITY_AUTO_EXPAND"]
+  tags         = var.tags
 }

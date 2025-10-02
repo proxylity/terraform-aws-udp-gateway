@@ -130,7 +130,7 @@ module "proxylity_listener" {
   
   listener_name = "my-udp-gateway"
   protocols = ["udp"]
-  client_restrictions = []
+  # client_restrictions uses default (open to all)
   
   # Declare destinations that will later have ARNs bound to them
   destinations = [
@@ -163,7 +163,7 @@ module "destination_arn_binding" {
 |------|-------------|------|---------|----------|
 | `listener_name` | Name of the Proxylity listener | `string` | n/a | yes |
 | `protocols` | List of protocols for the listener | `list(string)` | `["udp"]` | no |
-| `client_restrictions` | List of client restrictions | `list(string)` | `[]` | no |
+| `client_restrictions` | Client restrictions with networks and domains | `object({networks = list(string), domains = list(string)})` | `{networks = ["0.0.0.0/0", "::/0"], domains = []}` | no |
 | `destinations` | List of destination configurations with ARNs, roles, batching, etc. | `list(object({...}))` | `[]` | no |
 | `tags` | Tags to apply to resources | `map(string)` | `{}` | no |
 

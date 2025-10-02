@@ -17,9 +17,15 @@ variable "protocols" {
 }
 
 variable "client_restrictions" {
-  description = "List of client restrictions (CIDR ranges)"
-  type        = list(string)
-  default     = []
+  description = "Client restrictions configuration with Networks and Domains"
+  type = object({
+    networks = optional(list(string), ["0.0.0.0/0", "::/0"])
+    domains  = optional(list(string), [])
+  })
+  default = {
+    networks = ["0.0.0.0/0", "::/0"]
+    domains  = []
+  }
 }
 
 variable "destinations" {

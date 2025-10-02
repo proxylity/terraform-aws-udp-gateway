@@ -1,0 +1,28 @@
+# Terraform generated files and directories
+.terraform/
+*.tfstate
+*.tfstate.*.backup
+*.tfplan
+.terraform.lock.hcl
+
+# Sensitive variable files
+*.tfvars
+*.tfvars.json
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Override files (unless intended for version control)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Operating system specific files
+.DS_Store
+Thumbs.db

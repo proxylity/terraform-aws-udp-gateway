@@ -88,7 +88,8 @@ resource "aws_cloudformation_stack" "proxylity_s3_role" {
     }
   })
 
-  tags = local.common_tags
+  capabilities = ["CAPABILITY_AUTO_EXPAND", "CAPABILITY_NAMED_IAM"]
+  tags         = local.common_tags
 }
 
 # Create UDP Gateway Listener with destination names only (no ARNs)
@@ -99,9 +100,9 @@ module "udp_gateway" {
     aws = aws.us_west_2
   }
 
-  listener_name       = "multi-region-gateway-${local.suffix}"
-  protocols          = ["udp"]
-  client_restrictions = []
+  listener_name = "multi-region-gateway-${local.suffix}"
+  protocols     = ["udp"]
+  # client_restrictions uses default values (open to all networks)
 
   # Define destinations with names only - ARNs will be bound separately per region
   destinations = [
