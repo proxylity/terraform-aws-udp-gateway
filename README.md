@@ -145,7 +145,7 @@ module "proxylity_listener" {
 module "destination_arn_binding" {
   source = "./path/to/proxylity-terraform-provider/modules/proxylity_destination_arn"
   
-  destination_name = "my-destination"
+  destination_name = "lambda-destination"
   destination_arn = aws_lambda_function.my_function.arn
   # ingress_region_key = "*"  # Optional: use "*" for all regions
   
