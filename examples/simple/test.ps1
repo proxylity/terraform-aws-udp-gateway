@@ -1,51 +1,35 @@
-# Quick test script for simple example (PowerShell)
 param(
     [switch]$Deploy,
     [switch]$Destroy
 )
 
-Write-Host "=== Testing Simple Proxylity Example ===" -ForegroundColor Green
-
-# Check if we're in the right directory
-if (-not (Test-Path "main.tf")) {
-    Write-Error "main.tf not found. Run this script from examples/simple directory."
-    exit 1
+$ErrorActionPreference = "Stop"
+if ($Deploy -and $Destroy) {
+    throw "Choose either -Deploy or -Destroy."
 }
 
+Push-Location $PSScriptRoot
 try {
-    Write-Host "1. Initializing Terraform..." -ForegroundColor Yellow
-    terraform init -upgrade
-
-    Write-Host "2. Validating configuration..." -ForegroundColor Yellow
+    terraform init -input=false
+    if ($LASTEXITCODE -ne 0) { throw "Terraform initialization failed." }
     terraform validate
-
-    Write-Host "3. Formatting check..." -ForegroundColor Yellow
+    if ($LASTEXITCODE -ne 0) { throw "Terraform validation failed." }
     terraform fmt -check
+    if ($LASTEXITCODE -ne 0) { throw "Terraform formatting check failed." }
 
-    Write-Host "4. Creating plan..." -ForegroundColor Yellow
-    terraform plan -out=tfplan
-
-    Write-Host "✅ Simple example validation completed successfully!" -ForegroundColor Green
-    
-    if ($Deploy) {
-        Write-Host "5. Deploying infrastructure..." -ForegroundColor Yellow
-        terraform apply tfplan
-        
-        Write-Host "6. Showing outputs..." -ForegroundColor Yellow
-        terraform output
-    } elseif ($Destroy) {
-        Write-Host "5. Destroying infrastructure..." -ForegroundColor Red
-        terraform destroy -auto-approve
+    if ($Destroy) {
+        terraform destroy
+        if ($LASTEXITCODE -ne 0) { throw "Terraform destroy failed." }
     } else {
-        Write-Host ""
-        Write-Host "To deploy:" -ForegroundColor Cyan
-        Write-Host "  .\test.ps1 -Deploy"
-        Write-Host ""
-        Write-Host "To cleanup:" -ForegroundColor Cyan
-        Write-Host "  .\test.ps1 -Destroy"
+        terraform plan -out=tfplan
+        if ($LASTEXITCODE -ne 0) { throw "Terraform plan failed." }
+        if ($Deploy) {
+            terraform apply tfplan
+            if ($LASTEXITCODE -ne 0) { throw "Terraform apply failed." }
+            terraform output
+            if ($LASTEXITCODE -ne 0) { throw "Terraform output failed." }
+        }
     }
-}
-catch {
-    Write-Error "Test failed: $_"
-    exit 1
+} finally {
+    Pop-Location
 }

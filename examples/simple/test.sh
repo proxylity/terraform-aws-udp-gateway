@@ -12,7 +12,7 @@ if [[ ! -f "main.tf" ]]; then
 fi
 
 echo "1. Initializing Terraform..."
-terraform init -upgrade
+terraform init -input=false
 
 echo "2. Validating configuration..."
 terraform validate

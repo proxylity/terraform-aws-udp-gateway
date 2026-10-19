@@ -1,4 +1,4 @@
-# Contributing to Proxylity Terraform Provider
+# Contributing to the Proxylity Terraform module
 
 ## Versioning Guidelines
 
@@ -15,8 +15,8 @@ This project follows [Semantic Versioning](https://semver.org/):
 2. **Update version** in relevant files
 3. **Create and push git tag**:
    ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
+   git tag v2.0.0
+   git push origin v2.0.0
    ```
 4. **Create GitHub release** with release notes
 
@@ -55,7 +55,13 @@ Examples that require PATCH version bump:
 ## Testing
 
 Before releasing:
+- [ ] Run `terraform fmt -check -recursive` and the credential-free module tests
+- [ ] Initialize and validate every example
 - [ ] Test with `terraform plan` and `terraform apply`
 - [ ] Validate examples work correctly
 - [ ] Update documentation if needed
 - [ ] Check for breaking changes
+
+See [TESTING.md](./TESTING.md) for commands. Do not deploy AWS resources from the
+credential-free CI workflow. Update [MIGRATION.md](./MIGRATION.md) for breaking
+changes and retain resource addresses/logical IDs unless replacement is intended.

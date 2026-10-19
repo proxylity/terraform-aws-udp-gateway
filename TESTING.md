@@ -1,275 +1,96 @@
-# Testing the Proxylity Terraform Module
+# Testing
 
-This guide explains how to test and deploy the example configurations.
+## Credential-free checks
 
-## Prerequisites
+Install Terraform >= 1.9. These tests use mocked AWS providers; they do not create
+AWS resources, read customer configuration, or require AWS credentials.
 
-### 1. AWS CLI Configuration
-```bash
-# Configure AWS credentials
-aws configure
+```sh
+terraform fmt -check -recursive
+terraform init -backend=false
+terraform validate
+terraform test
 
-# Or use environment variables
-export AWS_ACCESS_KEY_ID="your-access-key"
-export AWS_SECRET_ACCESS_KEY="your-secret-key"
-export AWS_DEFAULT_REGION="us-west-2"
+terraform -chdir=modules/proxylity_destination_arn init -backend=false
+terraform -chdir=modules/proxylity_destination_arn validate
+terraform -chdir=modules/proxylity_destination_arn test
+
+terraform -chdir=modules/proxylity_packet_source init -backend=false
+terraform -chdir=modules/proxylity_packet_source validate
+terraform -chdir=modules/proxylity_packet_source test
 ```
 
-### 2. Terraform Installation
-```bash
-# Install Terraform (version >= 1.0)
-# Visit https://terraform.io/downloads for installation instructions
-terraform version
+Initialize and validate each example as well:
+
+```sh
+terraform -chdir=examples/simple init -backend=false
+terraform -chdir=examples/simple validate
+terraform -chdir=examples/simple test
+terraform -chdir=examples/multi-region init -backend=false
+terraform -chdir=examples/multi-region validate
+terraform -chdir=examples/multi-region test
+terraform -chdir=examples/protocols init -backend=false
+terraform -chdir=examples/protocols validate
+terraform -chdir=examples/protocols test
+terraform -chdir=examples/server-push init -backend=false
+terraform -chdir=examples/server-push validate
+terraform -chdir=examples/server-push test
 ```
 
-### 3. AWS Permissions
-Ensure your AWS credentials have permissions for:
-- IAM (roles, policies)
-- S3 (buckets, objects)
-- CloudFormation (stacks)
-- Access to Proxylity configuration buckets
+The tests inspect the actual serialized CloudFormation template, including
+PascalCase API fields, ARN string/map types, omission of nulls, protocol-specific
+attributes, explicit false values, configuration transforms, validation failures,
+numeric/list outputs and packet-source replacement when its listener changes.
 
-## Testing Simple Example
+These are contract tests, not proof of a successful live deployment. They cannot
+test subscription status, IAM authorization, AWS::Include expansion or packet
+delivery. CI repeats the checks using AWS provider 5.x and 6.x.
 
-### 1. Navigate to Simple Example
-```bash
-cd examples/simple
-```
+## Live verification (opt-in; incurs AWS charges)
 
-### 2. Initialize Terraform
-```bash
+Use a subscribed development account and a protected state backend. Never run
+apply/destroy in CI with the mocked-test job.
+
+### Simple SQS example
+
+From `examples/simple`, supply `region`, `client_cidr` (your public IP/CIDR) and
+`service_role_arn` (from the regional customer configuration). Then:
+
+```sh
 terraform init
-```
-
-### 3. Review the Plan
-```bash
-terraform plan
-```
-
-### 4. Deploy
-```bash
-terraform apply
-```
-
-### 5. Test UDP Gateway
-```bash
-# Get connection info from outputs
-terraform output connection_info
-
-# Test UDP connection (replace with actual values from output)
-echo "test packet" | nc -u your-domain.proxylity.com 12345
-```
-
-### 6. Cleanup
-```bash
-terraform destroy
-```
-
-## Testing Multi-Region Example
-
-### 1. Navigate to Multi-Region Example
-```bash
-cd examples/multi-region
-```
-
-### 2. Configure Multiple Regions
-Ensure AWS credentials work in all three regions:
-```bash
-# Test access to all regions
-aws sts get-caller-identity --region us-west-2
-aws sts get-caller-identity --region us-east-1
-aws sts get-caller-identity --region eu-west-1
-```
-
-### 3. Initialize Terraform
-```bash
-terraform init
-```
-
-### 4. Review the Plan
-```bash
-terraform plan
-```
-
-### 5. Deploy Infrastructure
-```bash
-# Deploy all resources
-terraform apply
-
-# Or deploy incrementally
-terraform apply -target=module.udp_gateway
-terraform apply -target=module.regional_infrastructure
-```
-
-### 6. Verify Regional Resources
-```bash
-# Check outputs
-terraform output regional_buckets
-terraform output regional_routing
-
-# Verify S3 buckets exist
-aws s3 ls | grep proxylity-udp-data
-
-# Check IAM role
-aws iam get-role --role-name $(terraform output -raw iam_role | jq -r '.name')
-```
-
-### 7. Test Regional Routing
-```bash
-# Get UDP endpoint
-ENDPOINT=$(terraform output -json connection_info | jq -r '.endpoint')
-
-# Send test packets (they should route to different regional buckets based on source)
-echo "test from us-west-2" | nc -u $ENDPOINT
-```
-
-### 8. Monitor S3 Storage
-```bash
-# Check for packet data in regional buckets
-aws s3 ls s3://$(terraform output -json regional_buckets | jq -r '."us-west-2".name')
-aws s3 ls s3://$(terraform output -json regional_buckets | jq -r '."us-east-1".name')
-aws s3 ls s3://$(terraform output -json regional_buckets | jq -r '."eu-west-1".name')
-```
-
-### 9. Cleanup
-```bash
-# Remove all resources
-terraform destroy
-
-# Or remove incrementally
-terraform destroy -target=module.regional_infrastructure
-terraform destroy -target=module.udp_gateway
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### 1. Proxylity Configuration Access
-```bash
-# Error: "Access denied to s3://proxylity-config-..."
-# Solution: Ensure your AWS account is set up with Proxylity
-
-# Check if configuration bucket is accessible
-aws s3 ls s3://proxylity-config-us-west-2/$(aws sts get-caller-identity --query Account --output text)/
-```
-
-#### 2. IAM Permission Errors
-```bash
-# Error: "User: ... is not authorized to perform: iam:CreateRole"
-# Solution: Ensure your AWS user/role has IAM permissions
-
-# Required IAM permissions:
-# - iam:CreateRole
-# - iam:AttachRolePolicy
-# - iam:PutRolePolicy
-# - cloudformation:CreateStack
-# - s3:CreateBucket
-```
-
-#### 3. CloudFormation Stack Failures
-```bash
-# Check CloudFormation events
-aws cloudformation describe-stack-events --stack-name proxylity-s3-role-XXXX
-
-# Check stack status
-aws cloudformation describe-stacks --stack-name proxylity-s3-role-XXXX
-```
-
-#### 4. Module Not Found
-```bash
-# Error: "Module not found"
-# Solution: Ensure you're in the correct directory
-
-pwd  # Should be in examples/simple or examples/multi-region
-ls   # Should see main.tf, variables.tf, etc.
-```
-
-## Validation Scripts
-
-### Simple Validation
-```bash
-#!/bin/bash
-cd examples/simple
-terraform init -upgrade
-terraform validate
 terraform plan -out=tfplan
-echo "Simple example validation: PASSED"
+terraform apply tfplan
+terraform output -raw endpoint
+terraform output -raw queue_url
 ```
 
-### Multi-Region Validation
-```bash
-#!/bin/bash
-cd examples/multi-region
-terraform init -upgrade
-terraform validate
-terraform plan -out=tfplan
-echo "Multi-region example validation: PASSED"
-```
+Send a UDP packet to the returned hostname/port from the allowed public source
+network and receive the resulting SQS message using `aws sqs receive-message`.
+Inspect CloudFormation stack events if provisioning fails. The example's
+`test.sh` / `test.ps1` wrappers validate and plan; deployment remains opt-in.
 
-### Full Test Suite
-```bash
-#!/bin/bash
-echo "=== Testing Proxylity Terraform Module ==="
+### Multi-region
 
-# Test simple example
-echo "Testing simple example..."
-cd examples/simple
-terraform init -upgrade
-terraform validate
-terraform plan -detailed-exitcode
+Supply `client_cidr` in `examples/multi-region`, then plan/apply normally (no
+targeted apply required). Confirm all three regional registration stacks exist.
+Send packets through each configured ingress region and verify objects arrive in
+the corresponding bucket. Other ingress regions have no fallback ARN in this
+example; configure one if needed. The destination role trusts all three regional
+ServiceRole principals.
 
-# Test multi-region example
-echo "Testing multi-region example..."
-cd ../multi-region
-terraform init -upgrade
-terraform validate
-terraform plan -detailed-exitcode
+### Protocols and server push
 
-echo "=== All tests completed ==="
-```
+- `examples/protocols` requires an existing destination, allowed public CIDR,
+  WireGuard peer public key and protected DTLS PSKs. Verify a real handshake and
+  payload delivery for each protocol. Verify certificate/key outputs against
+  clients; test token/certificate rotation separately.
+- `examples/server-push` requires an existing listener ID and regional ServiceRole
+  ARN. Confirm the SNS subscription and send a valid Proxylity push message
+  targeting a connected client. This example creates the subscription, not a
+  complete application-level push payload.
 
-## Continuous Integration
+### Cleanup
 
-### GitHub Actions Example
-```yaml
-name: Test Terraform Module
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.5.0
-      
-      - name: Test Simple Example
-        run: |
-          cd examples/simple
-          terraform init
-          terraform validate
-          terraform plan
-      
-      - name: Test Multi-Region Example
-        run: |
-          cd examples/multi-region
-          terraform init
-          terraform validate
-          terraform plan
-```
-
-## Cost Considerations
-
-### Simple Example
-- CloudFormation stacks: Free
-- S3 buckets: ~$0.023/month per bucket
-- Proxylity UDP Gateway: Per usage pricing
-
-### Multi-Region Example
-- 3 S3 buckets across regions: ~$0.069/month
-- IAM role: Free
-- Data transfer: Variable based on usage
-
-Remember to run `terraform destroy` after testing to avoid unnecessary charges!
+Run `terraform destroy` only in the example/state you created. Empty S3 buckets
+(including object versions/delete markers) first; the multi-region example does
+not force-delete packet data. Remove sensitive saved plan files when finished.

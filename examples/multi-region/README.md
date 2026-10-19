@@ -1,50 +1,26 @@
-# Multi-Region Proxylity UDP Gateway Example
+# Multi-region S3 delivery
 
-This example demonstrates how to create a Proxylity UDP Gateway with regional S3 destinations across multiple AWS regions for optimal latency and data residency.
+Creates a UDP listener, a shared destination role trusting all three regional
+Proxylity ServiceRole principals, and encrypted/versioned S3 buckets in
+`us-west-2`, `us-east-1` and `eu-west-1`.
 
-## Architecture
+Each bucket has a separate destination ARN registration. Provider aliases are
+passed statically: Terraform does not support dynamic `aws[each.value]` selection.
+IAM policies are installed before registering each ARN, and registrations depend
+on the actual listener's destination output.
 
-```
-UDP Traffic → Proxylity Listener (us-west-2) 
-                     ↓
-                 Destination: "regional-s3-storage" (no ARNs initially)
-                     ↓
-    Regional destination_arn modules bind regional S3 buckets:
-                     ├─ us-west-2 → S3 bucket (+ IAM policy)
-                     ├─ us-east-1 → S3 bucket (+ IAM policy)
-                     └─ eu-west-1 → S3 bucket (+ IAM policy)
-                     
-    Proxylity automatically updates the destination with regional routing!
-```
-
-## Features Demonstrated
-
-- **Clean separation**: Listener creates destination names, regions bind ARNs separately
-- **Regional infrastructure**: S3 bucket + IAM policy + destination ARN binding per region
-- **Automatic routing**: Proxylity updates listener when destination_arn resources are created
-- **Scalable pattern**: Easy to add/remove regions independently
-
-## Resources Created
-
-- UDP Gateway Listener in us-west-2 with destination name "regional-s3-storage"
-- Per region (us-west-2, us-east-1, eu-west-1):
-  - S3 bucket for packet storage
-  - IAM policy granting bucket access to global role
-  - Destination ARN binding that links the bucket to the destination name
-- Global IAM role for Proxylity service
-
-## Usage
-
-```bash
+```sh
 terraform init
-terraform plan
-terraform apply
+terraform plan -var='client_cidr=192.0.2.10/32' -out=tfplan
+terraform apply tfplan
+terraform output -json connection_info
+terraform output -json regional_routing
 ```
 
-## Cleanup
+Replace the documentation CIDR with your public source CIDR. The subscription and
+customer configuration must support all three regions. Traffic is mapped by
+ingress region; this example does not register a fallback for other regions.
 
-```bash
-terraform destroy
-```
-
-Note: Ensure you have AWS credentials configured for all three regions.
+Resources incur charges. After verifying delivery, empty all bucket versions and
+delete markers before `terraform destroy`. Buckets deliberately do not enable
+force-destroy. See [TESTING.md](../../TESTING.md) for live verification.

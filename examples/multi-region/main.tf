@@ -21,7 +21,7 @@ resource "random_id" "suffix" {
 
 locals {
   suffix = random_id.suffix.hex
-  
+
   # Common tags
   common_tags = {
     Project     = "proxylity-udp-gateway"
@@ -37,7 +37,7 @@ resource "aws_cloudformation_stack" "proxylity_s3_role" {
 
   template_body = jsonencode({
     AWSTemplateFormatVersion = "2010-09-09"
-    
+
     Mappings = {
       ProxylityConfig = {
         "Fn::Transform" = {
@@ -50,7 +50,7 @@ resource "aws_cloudformation_stack" "proxylity_s3_role" {
         }
       }
     }
-    
+
     Resources = {
       ProxylityS3Role = {
         Type = "AWS::IAM::Role"
@@ -62,13 +62,10 @@ resource "aws_cloudformation_stack" "proxylity_s3_role" {
               {
                 Effect = "Allow"
                 Principal = {
-                  AWS = {
-                    "Fn::FindInMap" = [
-                      "ProxylityConfig",
-                      { "Ref" = "AWS::Region" },
-                      "ServiceRole"
-                    ]
-                  }
+                  AWS = [
+                    for region in ["us-west-2", "us-east-1", "eu-west-1"] :
+                    { "Fn::FindInMap" = ["ProxylityConfig", region, "ServiceRole"] }
+                  ]
                 }
                 Action = "sts:AssumeRole"
               }
@@ -77,7 +74,7 @@ resource "aws_cloudformation_stack" "proxylity_s3_role" {
         }
       }
     }
-    
+
     Outputs = {
       RoleArn = {
         Value = { "Fn::GetAtt" = ["ProxylityS3Role", "Arn"] }
@@ -100,49 +97,63 @@ module "udp_gateway" {
     aws = aws.us_west_2
   }
 
-  listener_name = "multi-region-gateway-${local.suffix}"
-  protocols     = ["udp"]
-  # client_restrictions uses default values (open to all networks)
+  stack_name          = "multi-region-gateway-${local.suffix}"
+  listener_name       = "Multi-region gateway"
+  client_restrictions = { networks = [var.client_cidr] }
 
   # Define destinations with names only - ARNs will be bound separately per region
-  destinations = [
-    {
-      name        = "regional-s3-storage"
+  destinations = {
+    "regional-s3-storage-${local.suffix}" = {
       description = "Multi-region S3 storage for UDP packet data"
+      role        = { arn = aws_cloudformation_stack.proxylity_s3_role.outputs["RoleArn"] }
       # No destination_arn specified - will be populated by destination_arn modules
       batching = {
         count              = 100
         timeout_in_seconds = 5.0
-        size_in_mb        = 5
+        size_in_mb         = 5
       }
-      metrics_enabled = true
-      formatter      = "base64"
+      formatter = "base64"
     }
-  ]
+  }
 
   tags = local.common_tags
 }
 
 # Regional S3 buckets and destination ARN bindings
-module "regional_infrastructure" {
-  for_each = {
-    "us-west-2" = "us_west_2"
-    "us-east-1" = "us_east_1"
-    "eu-west-1" = "eu_west_1"
+module "us_west_2" {
+  source           = "./modules/regional-destination"
+  providers        = { aws = aws.us_west_2 }
+  region           = "us-west-2"
+  suffix           = local.suffix
+  destination_name = one(module.udp_gateway.destination_names)
+  global_role_arn  = aws_cloudformation_stack.proxylity_s3_role.outputs["RoleArn"]
+  tags             = local.common_tags
+}
+
+module "us_east_1" {
+  source           = "./modules/regional-destination"
+  providers        = { aws = aws.us_east_1 }
+  region           = "us-east-1"
+  suffix           = local.suffix
+  destination_name = one(module.udp_gateway.destination_names)
+  global_role_arn  = aws_cloudformation_stack.proxylity_s3_role.outputs["RoleArn"]
+  tags             = local.common_tags
+}
+
+module "eu_west_1" {
+  source           = "./modules/regional-destination"
+  providers        = { aws = aws.eu_west_1 }
+  region           = "eu-west-1"
+  suffix           = local.suffix
+  destination_name = one(module.udp_gateway.destination_names)
+  global_role_arn  = aws_cloudformation_stack.proxylity_s3_role.outputs["RoleArn"]
+  tags             = local.common_tags
+}
+
+locals {
+  regional_infrastructure = {
+    us-west-2 = module.us_west_2
+    us-east-1 = module.us_east_1
+    eu-west-1 = module.eu_west_1
   }
-
-  source = "./modules/regional-destination"
-
-  providers = {
-    aws = aws[each.value]
-  }
-
-  region                = each.key
-  suffix               = local.suffix
-  destination_name     = "regional-s3-storage"  # Must match destination in listener
-  global_role_arn      = aws_cloudformation_stack.proxylity_s3_role.outputs["RoleArn"]
-  
-  tags = local.common_tags
-
-  depends_on = [module.udp_gateway]
 }

@@ -1,0 +1,55 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        terraform: ["1.9.8", "latest"]
+        aws: ["~> 5.0", "~> 6.0"]
+    env:
+      TF_IN_AUTOMATION: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ matrix.terraform }}
+          terraform_wrapper: false
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+      - name: Initialize and validate modules and examples
+        env:
+          AWS_PROVIDER_CONSTRAINT: ${{ matrix.aws }}
+        run: |
+          mkdir -p "$HOME/.terraform.d/plugin-cache"
+          export TF_PLUGIN_CACHE_DIR="$HOME/.terraform.d/plugin-cache"
+          for directory in . modules/proxylity_destination_arn modules/proxylity_packet_source \
+            examples/simple examples/multi-region examples/protocols examples/server-push; do
+            cat > "$directory/provider-version_override.tf" <<EOF
+          terraform {
+            required_providers {
+              aws = {
+                source  = "hashicorp/aws"
+                version = "$AWS_PROVIDER_CONSTRAINT"
+              }
+            }
+          }
+          EOF
+            terraform -chdir="$directory" init -backend=false -input=false -no-color
+            terraform -chdir="$directory" validate -no-color
+          done
+      - name: Run credential-free contract tests
+        run: |
+          for directory in . modules/proxylity_destination_arn modules/proxylity_packet_source \
+            examples/simple examples/multi-region examples/protocols examples/server-push; do
+            terraform -chdir="$directory" test -no-color
+          done

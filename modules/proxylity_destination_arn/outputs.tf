@@ -10,15 +10,15 @@ output "stack_id" {
 
 output "destination_name" {
   description = "The name of the destination this ARN is bound to"
-  value       = var.destination_name
+  value       = aws_cloudformation_stack.proxylity_destination_arn.outputs.Destination
 }
 
 output "destination_arn" {
   description = "The AWS ARN bound to this destination"
-  value       = var.destination_arn
+  value       = aws_cloudformation_stack.proxylity_destination_arn.outputs.Arn
 }
 
 output "ingress_region_key" {
   description = "The ingress region key used for this destination"
-  value       = var.ingress_region_key
+  value       = aws_cloudformation_stack.proxylity_destination_arn.outputs.IngressRegionKey
 }

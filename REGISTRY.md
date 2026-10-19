@@ -5,7 +5,7 @@
 1. **GitHub Repository**: Module must be in a public GitHub repository
 2. **Repository Naming**: Should follow pattern `terraform-<provider>-<name>`
    - Example: `terraform-aws-udp-gateway` (for organization "proxylity")
-3. **Git Tags**: Use semantic versioning tags (v1.0.0, v1.1.0, etc.)
+3. **Git Tags**: Use semantic versioning tags (v2.0.0, v2.1.0, etc.)
 4. **HashiCorp Account**: Sign up at registry.terraform.io
 
 ## Repository Structure Requirements
@@ -49,8 +49,8 @@ git push origin main
 ### 2. Create Release Tag
 ```bash
 # Create and push semantic version tag
-git tag v1.0.0
-git push origin v1.0.0
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
 ### 3. Publish to Registry
@@ -78,9 +78,9 @@ git push origin v1.0.0
 ## Versioning for Registry
 
 ### Same Process, Better UX
-- **Git tags**: Still required (v1.0.0, v1.1.0, etc.)
+- **Git tags**: Still required (v2.0.0, v2.1.0, etc.)
 - **Registry syncs**: Automatically from your tagged releases
-- **Version constraints**: Use standard Terraform syntax (`~> 1.0`)
+- **Version constraints**: Use standard Terraform syntax (`~> 2.0`)
 
 ### Registry-Specific Benefits
 - **Version validation**: Registry validates semantic versioning
@@ -102,7 +102,7 @@ git push origin v1.0.0
 - [ ] All required files present (main.tf, variables.tf, outputs.tf, versions.tf)
 - [ ] README.md has proper formatting and examples
 - [ ] examples/ directory contains working examples
-- [ ] Git tag follows semantic versioning (v1.0.0)
+- [ ] Git tag follows semantic versioning (v2.0.0)
 - [ ] CHANGELOG.md updated
 - [ ] Repository is public on GitHub
 - [ ] All tests pass locally

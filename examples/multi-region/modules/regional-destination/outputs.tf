@@ -12,6 +12,6 @@ output "destination_binding" {
   value = {
     destination_name = var.destination_name
     destination_arn  = aws_s3_bucket.regional_bucket.arn
-    region_key      = var.region
+    region_key       = var.region
   }
 }

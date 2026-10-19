@@ -1,9 +1,9 @@
 output "listener_info" {
   description = "Information about the created UDP Gateway listener"
   value = {
-    name             = module.udp_gateway.listener_name
-    port             = module.udp_gateway.port
-    domain           = module.udp_gateway.domain
+    name              = module.udp_gateway.listener_name
+    port              = module.udp_gateway.port
+    domain            = module.udp_gateway.domain
     destination_names = module.udp_gateway.destination_names
   }
 }
@@ -11,7 +11,7 @@ output "listener_info" {
 output "regional_buckets" {
   description = "Information about the regional S3 buckets"
   value = {
-    for region, module in module.regional_infrastructure : region => module.bucket_info
+    for region, regional in local.regional_infrastructure : region => regional.bucket_info
   }
 }
 
@@ -26,7 +26,7 @@ output "iam_role" {
 output "connection_info" {
   description = "Connection information for testing"
   value = {
-    endpoint = "${module.udp_gateway.domain}:${module.udp_gateway.port}"
+    endpoint = module.udp_gateway.endpoint
     protocol = "UDP"
     note     = "Traffic will be routed to the closest regional S3 bucket based on ingress region"
   }
@@ -35,10 +35,10 @@ output "connection_info" {
 output "regional_routing" {
   description = "Regional routing configuration"
   value = {
-    for region, module in module.regional_infrastructure : region => {
-      bucket = module.bucket_info.name
-      region_key = module.destination_binding.region_key
-      description = "Traffic from ${region} routes to ${module.bucket_info.name}"
+    for region, regional in local.regional_infrastructure : region => {
+      bucket      = regional.bucket_info.name
+      region_key  = regional.destination_binding.region_key
+      description = "Traffic from ${region} routes to ${regional.bucket_info.name}"
     }
   }
 }

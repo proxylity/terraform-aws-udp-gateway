@@ -10,7 +10,7 @@ resource "aws_s3_bucket" "regional_bucket" {
 # S3 bucket versioning
 resource "aws_s3_bucket_versioning" "regional_bucket_versioning" {
   bucket = aws_s3_bucket.regional_bucket.id
-  
+
   versioning_configuration {
     status = "Enabled"
   }
@@ -30,7 +30,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "regional_bucket_e
 # Regional IAM policy for this specific bucket
 resource "aws_iam_role_policy" "regional_s3_policy" {
   name = "proxylity-s3-policy-${var.region}"
-  role = basename(var.global_role_arn)  # Extract role name from ARN
+  role = basename(var.global_role_arn) # Extract role name from ARN
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -38,13 +38,9 @@ resource "aws_iam_role_policy" "regional_s3_policy" {
       {
         Effect = "Allow"
         Action = [
-          "s3:PutObject",
-          "s3:PutObjectAcl",
-          "s3:GetObject",
-          "s3:ListBucket"
+          "s3:PutObject"
         ]
         Resource = [
-          aws_s3_bucket.regional_bucket.arn,
           "${aws_s3_bucket.regional_bucket.arn}/*"
         ]
       }
@@ -56,12 +52,15 @@ resource "aws_iam_role_policy" "regional_s3_policy" {
 module "destination_arn_binding" {
   source = "../../../../modules/proxylity_destination_arn"
 
+  stack_name         = "proxylity-s3-binding-${var.region}-${var.suffix}"
   destination_name   = var.destination_name
   destination_arn    = aws_s3_bucket.regional_bucket.arn
   ingress_region_key = var.region
 
   tags = merge(var.tags, {
-    Region = var.region
+    Region  = var.region
     Purpose = "regional-storage"
   })
+
+  depends_on = [aws_iam_role_policy.regional_s3_policy, aws_s3_bucket_server_side_encryption_configuration.regional_bucket_encryption, aws_s3_bucket_versioning.regional_bucket_versioning]
 }

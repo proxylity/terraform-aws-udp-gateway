@@ -18,7 +18,7 @@ aws sts get-caller-identity --region eu-west-1 > /dev/null
 echo "   ✅ All regions accessible"
 
 echo "2. Initializing Terraform..."
-terraform init -upgrade
+terraform init -input=false
 
 echo "3. Validating configuration..."
 terraform validate
@@ -41,8 +41,9 @@ echo "To deploy:"
 echo "  terraform apply tfplan"
 echo ""
 echo "To test regional routing:"
-echo "  ENDPOINT=\$(terraform output -raw connection_info | jq -r '.endpoint')"
-echo "  echo 'test packet' | nc -u \$ENDPOINT"
+echo "  HOST=\$(terraform output -json listener_info | jq -r '.domain + \".proxylity.com\"')"
+echo "  PORT=\$(terraform output -json listener_info | jq -r '.port')"
+echo "  echo 'test packet' | nc -u \"\$HOST\" \"\$PORT\""
 echo ""
 echo "To cleanup:"
 echo "  terraform destroy"

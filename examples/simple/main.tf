@@ -1,44 +1,76 @@
-# Configure AWS provider
 provider "aws" {
-  region = "us-west-2" # Default region for the example
+  region = var.region
+}
+
+variable "region" {
+  description = "Region with an active Proxylity subscription."
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "service_role_arn" {
+  description = "Regional ServiceRole from your Proxylity customer-config.json. This is the trusted principal, not the destination role."
+  type        = string
+}
+
+variable "client_cidr" {
+  description = "Public source CIDR allowed to send packets. Use your public IP with /32."
+  type        = string
+}
+
+resource "aws_sqs_queue" "packets" {
+  name_prefix = "proxylity-packets-"
+}
+
+resource "aws_iam_role" "delivery" {
+  name_prefix = "proxylity-delivery-"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { AWS = var.service_role_arn }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "delivery" {
+  role = aws_iam_role.delivery.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["sqs:SendMessage"]
+      Resource = aws_sqs_queue.packets.arn
+    }]
+  })
 }
 
 module "udp" {
-  source = "../../"
+  source = "../.."
 
-  listener_name = "example-listener"
-  protocols     = ["udp"]
-  # client_restrictions uses default values (open to all networks)
-  # To restrict access, use:
-  # client_restrictions = {
-  #   networks = ["10.0.0.0/8", "192.168.0.0/16"]
-  #   domains  = ["example.com", "*.internal.com"]
-  # }
-
-  # Inline destination declarations
-  destinations = [
-    {
-      name            = "lambda-destination"
-      description     = "Lambda function for packet processing"
-      destination_arn = "arn:aws:lambda:us-west-2:123456789012:function:packet-handler"
-      role = {
-        role_arn = "arn:aws:iam::123456789012:role/ProxylityLambdaRole"
-      }
-      batching = {
-        count              = 10
-        timeout_in_seconds = 5.0
-      }
-      metrics_enabled = true
+  stack_name          = "example-listener"
+  listener_name       = "Example UDP listener"
+  client_restrictions = { networks = [var.client_cidr] }
+  destinations = {
+    example-sqs-packets = {
+      destination_arn = aws_sqs_queue.packets.arn
+      role            = { arn = aws_iam_role.delivery.arn }
       formatter       = "base64"
-    },
-    {
-      name            = "sns-destination"
-      description     = "SNS topic for notifications"
-      destination_arn = "arn:aws:sns:us-west-2:123456789012:packet-notifications"
-      role = {
-        role_arn = "arn:aws:iam::123456789012:role/ProxylitySnsRole"
-      }
-      formatter = "utf8"
+      batching        = { count = 10, timeout_in_seconds = 0.25 }
+      arguments       = { send_raw = false, use_message_attributes = true }
     }
-  ]
+  }
+
+  depends_on = [aws_iam_role_policy.delivery]
+}
+
+output "endpoint" {
+  description = "Send UDP packets to this hostname:port."
+  value       = module.udp.endpoint
+}
+
+output "queue_url" {
+  description = "Receive delivered packets with aws sqs receive-message --queue-url."
+  value       = aws_sqs_queue.packets.url
 }
