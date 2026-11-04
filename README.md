@@ -140,7 +140,11 @@ The complete, typed nested schema and validation messages are in
 
 Each destination supports `description`, `role`, `batching`, `metrics_enabled`,
 `formatter`, `filter_expression` (BREX), `log_group_name`, and typed `arguments`.
-Supported payload formatters: `base64`, `hex`, `ascii`, `utf8`, `coap`.
+Supported payload formatters: `base64`, `hex`, `ascii`, `utf8`, `coap`,
+`coap+`, `syslog`. The protocol-aware formatters (`coap`, `coap+`, `syslog`)
+deliver `Data` as a JSON object; `coap+` decodes supported CoAP content formats.
+See the [Proxylity formatter documentation](https://www.proxylity.com/docs/destinations/formatters.html)
+for packet shapes and supported content formats.
 
 Set **one** ARN form:
 

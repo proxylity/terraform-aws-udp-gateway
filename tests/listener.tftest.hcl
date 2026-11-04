@@ -112,6 +112,23 @@ run "inline_destination_wire_contract" {
   }
 }
 
+run "protocol_aware_formatters" {
+  command = plan
+  variables {
+    destinations = {
+      coap-plus = { formatter = "coap+" }
+      syslog    = { formatter = "syslog" }
+    }
+  }
+  assert {
+    condition = (
+      jsondecode(aws_cloudformation_stack.proxylity_listener.template_body).Resources.ProxylityListener.Properties.Destinations[0].Formatter == "coap+" &&
+      jsondecode(aws_cloudformation_stack.proxylity_listener.template_body).Resources.ProxylityListener.Properties.Destinations[1].Formatter == "syslog"
+    )
+    error_message = "The coap+ and syslog formatters must pass validation and be serialized to CloudFormation."
+  }
+}
+
 run "wireguard" {
   command = apply
   variables {

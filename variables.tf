@@ -231,8 +231,8 @@ variable "destinations" {
   }
 
   validation {
-    condition     = alltrue([for dest in values(var.destinations) : dest.formatter == null ? true : contains(["base64", "hex", "ascii", "utf8", "coap"], dest.formatter)])
-    error_message = "formatter must be base64, hex, ascii, utf8 or coap."
+    condition     = alltrue([for dest in values(var.destinations) : dest.formatter == null ? true : contains(["base64", "hex", "ascii", "utf8", "coap", "coap+", "syslog"], dest.formatter)])
+    error_message = "formatter must be base64, hex, ascii, utf8, coap, coap+ or syslog."
   }
 
   validation {
