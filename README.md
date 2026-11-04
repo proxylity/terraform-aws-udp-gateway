@@ -5,7 +5,7 @@ provider. This is a **Terraform module, not a Terraform provider**. It manages
 CloudFormation stacks containing the same custom resources as the
 [CDK construct library](https://github.com/proxylity/cdk-udp-gateway).
 
-Version **2.0.0**. See [MIGRATION.md](./MIGRATION.md)
+Version **2.0.1**. See [MIGRATION.md](./MIGRATION.md)
 before upgrading from 1.x.
 
 ## Requirements
@@ -61,7 +61,7 @@ This snippet assumes the Lambda and delivery role already exist. The
 IAM role/policy, and listener end-to-end.
 
 For local development, use `source = "./terraform-aws-udp-gateway"` and omit
-`version`. Git consumers should pin a release tag such as `?ref=v2.0.0`; do not
+`version`. Git consumers should pin a release tag such as `?ref=v2.0.1`; do not
 depend on a moving branch in production.
 
 ## Design
