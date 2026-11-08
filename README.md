@@ -5,7 +5,7 @@ provider. This is a **Terraform module, not a Terraform provider**. It manages
 CloudFormation stacks containing the same custom resources as the
 [CDK construct library](https://github.com/proxylity/cdk-udp-gateway).
 
-Version **2.0.1**. See [MIGRATION.md](./MIGRATION.md)
+Version **2.0.0+**. See [MIGRATION.md](./MIGRATION.md)
 before upgrading from 1.x.
 
 ## Requirements
@@ -61,7 +61,7 @@ This snippet assumes the Lambda and delivery role already exist. The
 IAM role/policy, and listener end-to-end.
 
 For local development, use `source = "./terraform-aws-udp-gateway"` and omit
-`version`. Git consumers should pin a release tag such as `?ref=v2.0.1`; do not
+`version`. Git consumers should pin a release tag such as `?ref=v2.0.2`; do not
 depend on a moving branch in production.
 
 ## Design
@@ -105,7 +105,12 @@ aws s3 cp s3://proxylity-config-us-west-2/123456789012/customer-config.json - \
 
 Do not print or check in the account API key. The destination role needs
 service-specific actions scoped to its target, such as `lambda:InvokeFunction`,
-`sqs:SendMessage` or `s3:PutObject`. Metrics additionally need
+`sqs:SendMessage` or `s3:PutObject`. Lambda MicroVM image destinations need
+`lambda:RunMicrovm`, `GetMicrovm`, `ResumeMicrovm`, `TerminateMicrovm`,
+`GetMicrovmImage`, `GetMicrovmImageVersion` and `CreateMicrovmAuthToken` on the image
+ARN, `lambda:PassNetworkConnector` on the connectors the MicroVM uses (by default the AWS-managed `HTTP_INGRESS` and `INTERNET_EGRESS` connectors; with `egress_network_connector_arns`, `HTTP_INGRESS` plus those connectors), and
+`iam:PassRole` on `execution_role_arn` (condition `iam:PassedToService` =
+`lambda.amazonaws.com`). Metrics additionally need
 `cloudwatch:PutMetricData`; log delivery needs `logs:CreateLogStream` and
 `logs:PutLogEvents`. Create log groups yourself. For cross-region destinations,
 trust the Proxylity principals for the applicable ingress regions.
@@ -171,6 +176,7 @@ Typed `arguments` cover:
 | Service | Settings |
 |---------|----------|
 | Lambda | `tenant_id`, `tenant_id_expression`, `tenant_id_formatter`, `use_response_streaming`, `use_async_invoke` (invoke modes are mutually exclusive) |
+| Lambda MicroVM image (`arn:aws:lambda:REGION:ACCOUNT:microvm-image:NAME[:VERSION]`) | `idle_duration_seconds` (integer; the service clamps to 60-28800, default 900), `execution_role_arn`, `run_hook_extra_data` (up to 2048 characters, no secrets), `egress_network_connector_arns` (1-10 customer-managed network connector ARNs; omit for Lambda's default internet egress), and the `tenant_id*` settings. `use_response_streaming` and `use_async_invoke` are rejected. |
 | IoT Data | `dynamic_topic_suffix`, `topic_suffix_expression`, `topic_suffix_formatter` |
 | SQS | `send_raw`, `use_message_attributes`, `message_group_id_expression`, `message_group_id_formatter`, `message_deduplication_id_expression`, `message_deduplication_id_formatter` |
 | Kinesis | `partition_key_expression`, `partition_key_expression_formatter` |

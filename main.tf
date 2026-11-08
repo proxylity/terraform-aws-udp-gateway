@@ -10,6 +10,10 @@ locals {
         TenantIdFormatter                = dest.arguments.tenant_id_formatter
         UseResponseStreaming             = dest.arguments.use_response_streaming
         UseAsyncInvoke                   = dest.arguments.use_async_invoke
+        IdleDurationSeconds              = dest.arguments.idle_duration_seconds
+        ExecutionRoleArn                 = dest.arguments.execution_role_arn
+        RunHookExtraData                 = dest.arguments.run_hook_extra_data
+        EgressNetworkConnectorArns       = dest.arguments.egress_network_connector_arns
         SendRaw                          = dest.arguments.send_raw
         UseMessageAttributes             = dest.arguments.use_message_attributes
         MessageGroupIdExpression         = dest.arguments.message_group_id_expression

@@ -204,6 +204,10 @@ variable "destinations" {
       tenant_id_formatter                 = optional(string)
       use_response_streaming              = optional(bool)
       use_async_invoke                    = optional(bool)
+      idle_duration_seconds               = optional(number)
+      execution_role_arn                  = optional(string)
+      run_hook_extra_data                 = optional(string)
+      egress_network_connector_arns       = optional(list(string))
       send_raw                            = optional(bool)
       use_message_attributes              = optional(bool)
       message_group_id_expression         = optional(string)
@@ -249,6 +253,45 @@ variable "destinations" {
       dest.arguments.use_response_streaming == true && dest.arguments.use_async_invoke == true
     )])
     error_message = "Lambda response streaming and async invocation are mutually exclusive."
+  }
+
+  validation {
+    condition = alltrue([for dest in values(var.destinations) : dest.arguments == null ? true : (
+      dest.arguments.idle_duration_seconds == null ? true : floor(dest.arguments.idle_duration_seconds) == dest.arguments.idle_duration_seconds
+    )])
+    error_message = "idle_duration_seconds must be an integer number of seconds (the service clamps it to 60-28800)."
+  }
+
+  validation {
+    condition = alltrue([for dest in values(var.destinations) : dest.arguments == null ? true : (
+      dest.arguments.execution_role_arn == null ? true : can(regex("^arn:aws[a-z-]*:iam::[0-9]{12}:role/.+$", dest.arguments.execution_role_arn))
+    )])
+    error_message = "execution_role_arn must be an IAM role ARN."
+  }
+
+  validation {
+    condition = alltrue([for dest in values(var.destinations) : dest.arguments == null ? true : (
+      dest.arguments.egress_network_connector_arns == null ? true : (
+        length(dest.arguments.egress_network_connector_arns) >= 1 && length(dest.arguments.egress_network_connector_arns) <= 10 &&
+        alltrue([for arn in dest.arguments.egress_network_connector_arns : can(regex("^arn:aws[a-z-]*:lambda:[a-z0-9-]+:[0-9]{12}:network-connector:[^:[:space:]]+(:[0-9]+)?$", arn))])
+      )
+    )])
+    error_message = "egress_network_connector_arns must be a list of 1 to 10 Lambda network connector ARNs."
+  }
+
+  validation {
+    condition = alltrue([for dest in values(var.destinations) : dest.arguments == null ? true : (
+      dest.arguments.run_hook_extra_data == null ? true : length(dest.arguments.run_hook_extra_data) <= 2048
+    )])
+    error_message = "run_hook_extra_data must be at most 2048 characters."
+  }
+
+  validation {
+    condition = alltrue([for dest in values(var.destinations) : dest.arguments == null ? true : !(
+      (dest.arguments.use_response_streaming != null || dest.arguments.use_async_invoke != null) &&
+      (dest.destination_arn != null && can(regex(":microvm-image:", dest.destination_arn)))
+    )])
+    error_message = "use_response_streaming and use_async_invoke apply to Lambda functions, not Lambda MicroVM images."
   }
 
   validation {

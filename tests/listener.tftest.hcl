@@ -222,6 +222,73 @@ run "all_destination_arguments" {
   }
 }
 
+run "lambda_microvm_arguments" {
+  command = plan
+  variables {
+    destinations = {
+      microvm = {
+        destination_arn = "arn:aws:lambda:us-east-1:123456789012:microvm-image:echo"
+        arguments = {
+          idle_duration_seconds = 900
+          execution_role_arn    = "arn:aws:iam::123456789012:role/microvm-runtime"
+          run_hook_extra_data   = "{\"Example\":\"lambda-microvm\"}"
+          egress_network_connector_arns = ["arn:aws:lambda:us-east-1:123456789012:network-connector:nc-abc123"]
+          tenant_id_expression  = "u8[0] >> 6 ?? 0"
+          tenant_id_formatter   = "hex"
+        }
+      }
+    }
+  }
+  assert {
+    condition = jsondecode(aws_cloudformation_stack.proxylity_listener.template_body).Resources.ProxylityListener.Properties.Destinations[0].Arguments == {
+      IdleDurationSeconds = 900
+      ExecutionRoleArn    = "arn:aws:iam::123456789012:role/microvm-runtime"
+      RunHookExtraData    = "{\"Example\":\"lambda-microvm\"}"
+      EgressNetworkConnectorArns = ["arn:aws:lambda:us-east-1:123456789012:network-connector:nc-abc123"]
+      TenantIdExpression  = "u8[0] >> 6 ?? 0"
+      TenantIdFormatter   = "hex"
+    }
+    error_message = "MicroVM argument names and values must match the custom-resource contract."
+  }
+}
+
+run "invalid_microvm_with_lambda_invoke_modes" {
+  command = plan
+  variables {
+    destinations = {
+      invalid = {
+        destination_arn = "arn:aws:lambda:us-east-1:123456789012:microvm-image:echo"
+        arguments       = { use_async_invoke = true }
+      }
+    }
+  }
+  expect_failures = [var.destinations]
+}
+
+run "invalid_microvm_idle_duration" {
+  command = plan
+  variables { destinations = { invalid = { arguments = { idle_duration_seconds = 90.5 } } } }
+  expect_failures = [var.destinations]
+}
+
+run "invalid_microvm_egress_connectors" {
+  command = plan
+  variables { destinations = { invalid = { arguments = { egress_network_connector_arns = ["arn:aws:lambda:us-east-1:123456789012:microvm-image:echo"] } } } }
+  expect_failures = [var.destinations]
+}
+
+run "invalid_microvm_empty_egress_connectors" {
+  command = plan
+  variables { destinations = { invalid = { arguments = { egress_network_connector_arns = [] } } } }
+  expect_failures = [var.destinations]
+}
+
+run "invalid_microvm_execution_role" {
+  command = plan
+  variables { destinations = { invalid = { arguments = { execution_role_arn = "not-a-role" } } } }
+  expect_failures = [var.destinations]
+}
+
 run "dtls" {
   command = apply
   variables {
