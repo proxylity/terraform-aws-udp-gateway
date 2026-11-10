@@ -208,6 +208,8 @@ variable "destinations" {
       execution_role_arn                  = optional(string)
       run_hook_extra_data                 = optional(string)
       egress_network_connector_arns       = optional(list(string))
+      runtime_log_group_name              = optional(string)
+      use_tenant_id_for_log_stream_name   = optional(bool)
       send_raw                            = optional(bool)
       use_message_attributes              = optional(bool)
       message_group_id_expression         = optional(string)
@@ -284,6 +286,21 @@ variable "destinations" {
       dest.arguments.run_hook_extra_data == null ? true : length(dest.arguments.run_hook_extra_data) <= 2048
     )])
     error_message = "run_hook_extra_data must be at most 2048 characters."
+  }
+
+  validation {
+    condition = alltrue([for dest in values(var.destinations) : dest.arguments == null ? true : (
+      dest.arguments.runtime_log_group_name == null ? true : can(regex("^[a-zA-Z0-9_\\-/.#]{1,512}$", dest.arguments.runtime_log_group_name))
+    )])
+    error_message = "runtime_log_group_name must be a CloudWatch Logs log group name of 1 to 512 characters (letters, digits, and _-/.#)."
+  }
+
+  validation {
+    condition = alltrue([for dest in values(var.destinations) : dest.arguments == null ? true : !(
+      dest.arguments.use_tenant_id_for_log_stream_name == true &&
+      dest.arguments.tenant_id == null && dest.arguments.tenant_id_expression == null
+    )])
+    error_message = "use_tenant_id_for_log_stream_name requires tenant_id or tenant_id_expression."
   }
 
   validation {

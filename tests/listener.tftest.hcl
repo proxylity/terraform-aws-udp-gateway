@@ -229,24 +229,28 @@ run "lambda_microvm_arguments" {
       microvm = {
         destination_arn = "arn:aws:lambda:us-east-1:123456789012:microvm-image:echo"
         arguments = {
-          idle_duration_seconds = 900
-          execution_role_arn    = "arn:aws:iam::123456789012:role/microvm-runtime"
-          run_hook_extra_data   = "{\"Example\":\"lambda-microvm\"}"
-          egress_network_connector_arns = ["arn:aws:lambda:us-east-1:123456789012:network-connector:nc-abc123"]
-          tenant_id_expression  = "u8[0] >> 6 ?? 0"
-          tenant_id_formatter   = "hex"
+          idle_duration_seconds             = 900
+          execution_role_arn                = "arn:aws:iam::123456789012:role/microvm-runtime"
+          run_hook_extra_data               = "{\"Example\":\"lambda-microvm\"}"
+          egress_network_connector_arns     = ["arn:aws:lambda:us-east-1:123456789012:network-connector:nc-abc123"]
+          runtime_log_group_name            = "/my-app/microvms"
+          use_tenant_id_for_log_stream_name = true
+          tenant_id_expression              = "u8[0] >> 6 ?? 0"
+          tenant_id_formatter               = "hex"
         }
       }
     }
   }
   assert {
     condition = jsondecode(aws_cloudformation_stack.proxylity_listener.template_body).Resources.ProxylityListener.Properties.Destinations[0].Arguments == {
-      IdleDurationSeconds = 900
-      ExecutionRoleArn    = "arn:aws:iam::123456789012:role/microvm-runtime"
-      RunHookExtraData    = "{\"Example\":\"lambda-microvm\"}"
-      EgressNetworkConnectorArns = ["arn:aws:lambda:us-east-1:123456789012:network-connector:nc-abc123"]
-      TenantIdExpression  = "u8[0] >> 6 ?? 0"
-      TenantIdFormatter   = "hex"
+      IdleDurationSeconds         = 900
+      ExecutionRoleArn            = "arn:aws:iam::123456789012:role/microvm-runtime"
+      RunHookExtraData            = "{\"Example\":\"lambda-microvm\"}"
+      EgressNetworkConnectorArns  = ["arn:aws:lambda:us-east-1:123456789012:network-connector:nc-abc123"]
+      RuntimeLogGroupName         = "/my-app/microvms"
+      UseTenantIdForLogStreamName = true
+      TenantIdExpression          = "u8[0] >> 6 ?? 0"
+      TenantIdFormatter           = "hex"
     }
     error_message = "MicroVM argument names and values must match the custom-resource contract."
   }
@@ -469,4 +473,16 @@ run "invalid_psk" {
     dtls     = { psks = { device = " " } }
   }
   expect_failures = [var.dtls]
+}
+
+run "invalid_microvm_runtime_log_group" {
+  command = plan
+  variables { destinations = { invalid = { arguments = { runtime_log_group_name = "has space" } } } }
+  expect_failures = [var.destinations]
+}
+
+run "invalid_microvm_tenant_log_stream_without_tenant" {
+  command = plan
+  variables { destinations = { invalid = { arguments = { use_tenant_id_for_log_stream_name = true } } } }
+  expect_failures = [var.destinations]
 }

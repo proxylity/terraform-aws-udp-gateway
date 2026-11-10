@@ -14,6 +14,8 @@ locals {
         ExecutionRoleArn                 = dest.arguments.execution_role_arn
         RunHookExtraData                 = dest.arguments.run_hook_extra_data
         EgressNetworkConnectorArns       = dest.arguments.egress_network_connector_arns
+        RuntimeLogGroupName              = dest.arguments.runtime_log_group_name
+        UseTenantIdForLogStreamName      = dest.arguments.use_tenant_id_for_log_stream_name
         SendRaw                          = dest.arguments.send_raw
         UseMessageAttributes             = dest.arguments.use_message_attributes
         MessageGroupIdExpression         = dest.arguments.message_group_id_expression

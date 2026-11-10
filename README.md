@@ -61,7 +61,7 @@ This snippet assumes the Lambda and delivery role already exist. The
 IAM role/policy, and listener end-to-end.
 
 For local development, use `source = "./terraform-aws-udp-gateway"` and omit
-`version`. Git consumers should pin a release tag such as `?ref=v2.0.2`; do not
+`version`. Git consumers should pin a release tag such as `?ref=v2.0.3`; do not
 depend on a moving branch in production.
 
 ## Design
@@ -176,7 +176,7 @@ Typed `arguments` cover:
 | Service | Settings |
 |---------|----------|
 | Lambda | `tenant_id`, `tenant_id_expression`, `tenant_id_formatter`, `use_response_streaming`, `use_async_invoke` (invoke modes are mutually exclusive) |
-| Lambda MicroVM image (`arn:aws:lambda:REGION:ACCOUNT:microvm-image:NAME[:VERSION]`) | `idle_duration_seconds` (integer; the service clamps to 60-28800, default 900), `execution_role_arn`, `run_hook_extra_data` (up to 2048 characters, no secrets), `egress_network_connector_arns` (1-10 customer-managed network connector ARNs; omit for Lambda's default internet egress), and the `tenant_id*` settings. `use_response_streaming` and `use_async_invoke` are rejected. |
+| Lambda MicroVM image (`arn:aws:lambda:REGION:ACCOUNT:microvm-image:NAME[:VERSION]`) | `idle_duration_seconds` (integer; the service clamps to 60-28800, default 900), `execution_role_arn`, `run_hook_extra_data` (up to 2048 characters, no secrets), `egress_network_connector_arns` (1-10 customer-managed network connector ARNs; omit for Lambda's default internet egress), `runtime_log_group_name` (the CloudWatch Logs group MicroVMs write their stdout/stderr to, using the execution role, which must be allowed to write there; omit for Lambda's default `/aws/lambda-microvms/{image name}`), `use_tenant_id_for_log_stream_name` (name each MicroVM's log stream after its tenant ID; requires `tenant_id` or `tenant_id_expression`), and the `tenant_id*` settings. `use_response_streaming` and `use_async_invoke` are rejected. |
 | IoT Data | `dynamic_topic_suffix`, `topic_suffix_expression`, `topic_suffix_formatter` |
 | SQS | `send_raw`, `use_message_attributes`, `message_group_id_expression`, `message_group_id_formatter`, `message_deduplication_id_expression`, `message_deduplication_id_formatter` |
 | Kinesis | `partition_key_expression`, `partition_key_expression_formatter` |

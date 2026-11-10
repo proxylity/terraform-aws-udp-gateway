@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3]
+### Added
+- Lambda MicroVM image destinations: `runtime_log_group_name` (the log group MicroVMs write their stdout/stderr to)
+  and `use_tenant_id_for_log_stream_name` (one log stream per tenant) destination arguments, with validation.
 ## [2.0.2]
 ### Added
 - Lambda MicroVM image destinations: typed `idle_duration_seconds`, `execution_role_arn`
